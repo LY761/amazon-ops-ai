@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AmazonOps AI</title>
+  <style>
+    :root{--navy:#101828;--blue:#2563eb;--orange:#ff9900;--muted:#667085;--line:#e4e7ec;--surface:#f8fafc;--green:#067647}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(--navy);background:var(--surface)}
+    header{background:linear-gradient(130deg,#101828,#173b73);color:white;padding:42px 24px}.wrap{max-width:1120px;margin:auto}.eyebrow{color:#fdbb52;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+    h1{font-size:38px;margin:8px 0}.lead{max-width:760px;color:#d0d5dd;line-height:1.7}.badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.badge{padding:6px 10px;border-radius:999px;background:#ffffff16;border:1px solid #ffffff2b;font-size:13px}
+    main{padding:26px 24px 50px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{background:white;border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 4px 18px #1018280a;margin-bottom:16px}.metric strong{font-size:30px;display:block}.metric span,.muted{color:var(--muted)}
+    .two{display:grid;grid-template-columns:1.25fr .75fr;gap:16px}.status{display:inline-flex;gap:7px;align-items:center;font-weight:700;color:var(--green)}.dot{width:8px;height:8px;border-radius:50%;background:#12b76a}.status.offline{color:#b54708}.status.offline .dot{background:#f79009}
+    button{border:0;border-radius:9px;padding:10px 15px;font-weight:700;cursor:pointer;background:var(--blue);color:white;margin:4px 6px 4px 0}button.secondary{background:white;color:var(--navy);border:1px solid var(--line)}button:disabled{opacity:.45;cursor:not-allowed}
+    code,pre{font-family:"Cascadia Code",Consolas,monospace}pre{background:#0b1220;color:#d0d5dd;padding:14px;border-radius:10px;white-space:pre-wrap;max-height:360px;overflow:auto}.task{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)}.task:last-child{border:0}.hidden{display:none}a{color:var(--blue);text-decoration:none}.links{display:flex;gap:16px;flex-wrap:wrap}.capabilities{padding-left:18px;color:var(--muted);line-height:1.8}
+    @media(max-width:760px){.grid,.two{grid-template-columns:1fr}h1{font-size:30px}.task{align-items:flex-start;gap:8px;flex-direction:column}}
+  </style>
+</head>
+<body>
+<header><div class="wrap"><div class="eyebrow">Portfolio Project · Python RPA</div><h1>AmazonOps AI</h1><p class="lead">Amazon 运营智能巡检与 RPA 草稿助手。把 Listing、FBA 库存和订单风险转成可审计的自动化任务，并用 Playwright 保存执行证据。</p><div class="badges"><span class="badge">FastAPI</span><span class="badge">Playwright</span><span class="badge">SQLite</span><span class="badge">Amazon SP-API SDK</span><span class="badge">Structured AI</span></div></div></header>
+<main class="wrap">
+  <section class="grid">
+    <div class="card metric"><strong>{{ catalog.summary.product_count }}</strong><span>演示商品</span></div>
+    <div class="card metric"><strong>{{ catalog.summary.low_stock_count }}</strong><span>FBA 低库存风险</span></div>
+    <div class="card metric"><strong>{{ catalog.summary.attention_order_count }}</strong><span>超时订单关注项</span></div>
+  </section>
+  <section class="two">
+    <div class="card"><div class="eyebrow">End-to-end workflow</div><h2>运行运营巡检</h2><p class="muted">数据校验 → 运营分析 → RPA 填写草稿 → 报告与截图。失败演示会在浏览器步骤中断，重试时复用已完成步骤。</p><button onclick="run(false)">运行完整 Demo</button><button class="secondary" onclick="run(true)">演示失败与恢复</button><pre id="result">等待运行…</pre></div>
+    <div class="card"><div class="eyebrow">Open-source integration</div><h2>Amazon SP-API</h2><p class="status {% if not amazon.configured %}offline{% endif %}"><span class="dot"></span>{% if amazon.configured %}只读接口已就绪{% else %}样例数据模式{% endif %}</p><p class="muted">SDK：{{ amazon.provider }}{% if amazon.sdk_version %} v{{ amazon.sdk_version }}{% endif %}<br>站点：{{ amazon.marketplace }}</p><ul class="capabilities"><li>FBA 库存汇总</li><li>订单状态概览，不读取买家 PII</li><li>凭证缺失时零 Amazon 网络请求</li></ul>{% if not amazon.configured %}<p class="muted">待配置：{{ amazon.missing_credentials | join(', ') }}</p>{% endif %}<button onclick="previewAmazon()" {% if not amazon.configured %}disabled title="需要卖家授权"{% endif %}>读取 SP-API 预览</button></div>
+  </section>
+  <section class="card"><h2>最近任务</h2>{% for task in tasks %}<div class="task"><div><code>{{ task.id }}</code><br><span class="muted">{{ task.status }} · 尝试 {{ task.attempt }}</span></div><div><button class="secondary" onclick="showTask('{{ task.id }}')">查看详情</button>{% if task.status == 'failed' %}<button onclick="retryTask('{{ task.id }}')">重试</button>{% endif %}</div></div>{% else %}<p class="muted">尚无任务，运行一次 Demo 后会出现可追溯的步骤记录。</p>{% endfor %}</section>
+  <section id="detail" class="card hidden"><h2>任务详情</h2><div id="links" class="links"></div><pre id="detail-body"></pre></section>
+  <div class="links"><a href="/docs">OpenAPI 文档</a><a href="/api/integrations/amazon/status">SP-API 就绪状态</a><a href="/simulator">Seller Central 仿真页</a></div>
+</main>
+<script>
+async function run(fail){const r=await fetch('/api/demo/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({idempotency_key:'dashboard-'+Date.now(),fail_once:fail})});document.querySelector('#result').textContent=JSON.stringify(await r.json(),null,2);location.reload();}
+async function showTask(id){const task=await (await fetch('/api/tasks/'+id)).json();document.querySelector('#detail').classList.remove('hidden');document.querySelector('#detail-body').textContent=JSON.stringify(task,null,2);const evidence=task.report?.evidence||{};document.querySelector('#links').innerHTML=[evidence.screenshot&&`<a href="/${evidence.screenshot}" target="_blank">RPA 截图</a>`,evidence.markdown_report&&`<a href="/${evidence.markdown_report}" target="_blank">Markdown 报告</a>`,task.report&&`<a href="/api/tasks/${id}/report" target="_blank">JSON 报告</a>`].filter(Boolean).join('');}
+async function retryTask(id){const r=await fetch('/api/tasks/'+id+'/retry',{method:'POST'});document.querySelector('#result').textContent=JSON.stringify(await r.json(),null,2);location.reload();}
+async function previewAmazon(){const r=await fetch('/api/integrations/amazon/preview',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({lookback_days:7})});document.querySelector('#result').textContent=JSON.stringify(await r.json(),null,2);}
+</script>
+</body></html>
