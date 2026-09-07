@@ -1,18 +1,44 @@
 from __future__ import annotations
 
-from app.domain.models import Inventory, Order, Product
+from datetime import date, timedelta
 
-PRODUCTS = [
-    {"sku":"MUG-001","title":"Insulated Stainless Steel Travel Mug, 20 oz with Leakproof Lid","bullets":["20 oz capacity","Double wall insulation","Leakproof lid","Fits cup holders","BPA free"],"category":"Travel Mug"},
-    {"sku":"MAT-002","title":"Yoga Mat","bullets":["Non-slip texture","Lightweight design"],"category":"Fitness Mat"},
-    {"sku":"BOX-003","title":"Bamboo Storage Box with Lid for Desk and Home Organization","bullets":["Natural bamboo","Stackable lid","Smooth finish","Multi-room storage","Gift-ready"],"category":"Storage"},
-]
-INVENTORY = [{"sku":"MUG-001","available":42,"reorder_point":12},{"sku":"MAT-002","available":3,"reorder_point":10},{"sku":"BOX-003","available":25,"reorder_point":8}]
-ORDERS = [{"order_id":"DEMO-1001","sku":"MUG-001","status":"shipped","age_days":1},{"order_id":"DEMO-1002","sku":"MAT-002","status":"pending","age_days":4},{"order_id":"DEMO-1003","sku":"BOX-003","status":"pending","age_days":1}]
+from app.domain.models import AnomalyLabel, Inventory, InventorySnapshot, Order, Product
+
+_START_DATE = date(2026, 1, 1)
+_LISTING_SKUS = {f"SKU-{number:03d}" for number in range(1, 9)}
+_INVENTORY_SKUS = {f"SKU-{number:03d}" for number in range(9, 17)}
+_ORDER_SKUS = {f"SKU-{number:03d}" for number in range(17, 25)}
+
+
+def _sku(number: int) -> str:
+    return f"SKU-{number:03d}"
+
+
+def _products() -> list[Product]:
+    return [Product(sku=_sku(number), title=f"Travel Mug {number}" if _sku(number) in _LISTING_SKUS else f"Insulated Stainless Steel Travel Mug {number}, 20 oz Leakproof Lid for Daily Commute", bullets=["Non-slip grip", "Easy to clean"] if _sku(number) in _LISTING_SKUS else ["20 oz capacity for daily hydration", "Double wall insulation keeps drinks at temperature", "Leakproof lid fits standard cup holders", "BPA free materials for everyday use", "Easy care design for commuting and travel"], category="Travel Mug") for number in range(1, 101)]
+
+
+def _inventory() -> list[Inventory]:
+    return [Inventory(sku=_sku(number), available=5 if _sku(number) in _INVENTORY_SKUS else 40, reorder_point=10) for number in range(1, 101)]
+
+
+def _orders() -> list[Order]:
+    return [Order(order_id=f"ORDER-{number:03d}-{sequence:02d}", sku=_sku(number), status="pending" if _sku(number) in _ORDER_SKUS and sequence == 1 else "shipped", age_days=4 if _sku(number) in _ORDER_SKUS and sequence == 1 else 1) for number in range(1, 101) for sequence in range(1, 9)]
+
 
 def load_catalog() -> tuple[list[Product], list[Inventory], list[Order]]:
-    return ([Product.model_validate(row) for row in PRODUCTS], [Inventory.model_validate(row) for row in INVENTORY], [Order.model_validate(row) for row in ORDERS])
+    return _products(), _inventory(), _orders()
+
+
+def load_inventory_snapshots() -> list[InventorySnapshot]:
+    return [InventorySnapshot(sku=_sku(number), snapshot_date=_START_DATE + timedelta(days=offset), available=34 - offset if _sku(number) in _INVENTORY_SKUS else 40 - (offset % 3)) for number in range(1, 101) for offset in range(30)]
+
+
+def load_anomaly_labels() -> list[AnomalyLabel]:
+    return [*(AnomalyLabel(sku=sku, anomaly_type="listing") for sku in sorted(_LISTING_SKUS)), *(AnomalyLabel(sku=sku, anomaly_type="inventory") for sku in sorted(_INVENTORY_SKUS)), *(AnomalyLabel(sku=sku, anomaly_type="order") for sku in sorted(_ORDER_SKUS))]
+
 
 def summary() -> dict:
     products, inventory, orders = load_catalog()
-    return {"data_source":{"mode":"fixture_demo","contract":"Amazon SP-API shaped business data"}, "products":[row.model_dump() for row in products], "inventory":[row.model_dump() for row in inventory], "orders":[row.model_dump() for row in orders], "summary":{"product_count":len(products),"low_stock_count":sum(row.available <= row.reorder_point for row in inventory),"attention_order_count":sum(row.status != "shipped" and row.age_days >= 3 for row in orders)}}
+    snapshots, labels = load_inventory_snapshots(), load_anomaly_labels()
+    return {"data_source":{"mode":"synthetic_batch_v2","contract":"Amazon SP-API shaped business data"}, "products":[row.model_dump() for row in products], "inventory":[row.model_dump() for row in inventory], "orders":[row.model_dump() for row in orders], "summary":{"product_count":len(products),"inventory_count":len(inventory),"order_count":len(orders),"inventory_snapshot_count":len(snapshots),"labeled_anomaly_count":len(labels),"low_stock_count":sum(row.available <= row.reorder_point for row in inventory),"attention_order_count":sum(row.status != "shipped" and row.age_days >= 3 for row in orders)}}

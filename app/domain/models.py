@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import date
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -26,6 +29,17 @@ class Order(BaseModel):
     sku: str
     status: str
     age_days: int = Field(ge=0)
+
+
+class InventorySnapshot(BaseModel):
+    sku: str
+    snapshot_date: date
+    available: int = Field(ge=0)
+
+
+class AnomalyLabel(BaseModel):
+    sku: str
+    anomaly_type: Literal["listing", "inventory", "order"]
 
 
 class ListingAdvice(BaseModel):

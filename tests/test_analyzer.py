@@ -38,10 +38,11 @@ class FakeChatClient:
 def test_deterministic_analyzer_finds_listing_inventory_and_order_risks():
     products, inventory, orders = load_catalog()
     advice = {row.sku: row for row in DeterministicAnalyzer().analyze(products, inventory, orders)}
-    assert advice["MAT-002"].score < 100
-    assert advice["MAT-002"].inventory_risk
-    assert advice["MAT-002"].order_risk
-    assert len(advice["MAT-002"].suggested_bullets) == 5
+    assert advice["SKU-001"].score < 100
+    assert advice["SKU-001"].issues
+    assert advice["SKU-009"].inventory_risk
+    assert advice["SKU-017"].order_risk
+    assert len(advice["SKU-001"].suggested_bullets) == 5
 
 
 def test_openai_responses_success_is_validated_without_network():

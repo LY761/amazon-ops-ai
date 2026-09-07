@@ -1,12 +1,10 @@
-# 简历描述草稿
+# 跨境电商多平台异常处理与影刀RPA执行平台
 
-**AmazonOps AI｜Amazon 运营智能巡检与 RPA 草稿助手**  
-Python / FastAPI / Playwright / SQLite / Pydantic / Amazon SP-API
+面向跨境电商多平台订单同步、Listing巡检和后台重复录入场景，完成“数据接入—平台规则检测—RAG解释—人工审批—影刀执行—飞书回传—看板监控”闭环。
 
-- 设计并实现 Amazon 运营巡检闭环，对 Listing 完整度、FBA 库存阈值和订单时效进行结构化分析，输出标题、五点描述及风险建议。
-- 使用 Playwright 自动填写 Seller Central 仿真页面，通过显式等待、截图取证和 JSON/Markdown 报告保留 RPA 执行证据。
-- 实现带幂等键的任务状态机、步骤级持久化和失败恢复，使重试复用已完成的数据校验、AI 分析或浏览器步骤。
-- 集成 MIT 开源 `python-amazon-sp-api` 2.1.22，完成 LWA 凭证就绪检查、FBA 库存与非 PII 订单状态的只读适配，并依据 Amazon 官方模型编写无网络契约测试。
-- 构建可替换的确定性/OpenAI-compatible 分析层，使用 Pydantic 强校验模型结构化输出，保证无卖家账号或无模型密钥时仍可复现完整 Demo。
+- 设计Shopee、TikTok Shop、ERP和物流的标准化数据适配层，覆盖商品、库存和订单，支持外部HTTPS端点与本地Fixture切换；实现幂等键、令牌隔离、429/5xx三次重试和Pydantic入口校验。
+- 建立Amazon、Shopee和TikTok Shop规则配置，用确定性规则判定Listing完整度、低库存与订单超时，知识建议层根据命中证据调用RAG/SOP接口返回引用和处理解释；使用100个商品、800条订单和3000条库存快照复现24个预设异常。
+- 人工审批后由FastAPI事件调用影刀CLI，完成任务领取、仿真后台填写、草稿保存、页面刷新及字段回读，单次实机闭环约20.8秒；成功后支持自动推送飞书Webhook，无凭证时回退到本地Fixture。
+- 用SQLite记录任务、审批、重试、截图和报告，构建成功率、失败数、恢复数和平均处理时长看板；32项自动化测试通过。
 
-**面试表述边界：** 当前验证环境为官方字段结构样例、本地 Seller Central 仿真页和无网络测试；真实卖家 SP-API 生产联调待授权后完成。
+证据边界：Amazon SP-API保留只读适配器，因无卖家授权未发起生产调用；Shopee、TikTok Shop、ERP、物流和飞书已验证接口契约与Fixture，尚未使用真实生产账号。

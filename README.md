@@ -1,40 +1,60 @@
 # AmazonOps AI
 
-面向求职作品集的 **Amazon 运营智能巡检与 RPA 草稿助手**。系统把 Listing、FBA 库存和订单状态转成结构化运营建议，再用 Playwright 操作项目内置的 Seller Central 仿真页面，并保留任务步骤、失败重试、截图和报告证据。
+跨境电商运营异常处理与审批式RPA平台。系统同步商品、库存和非PII订单状态，形成Listing、库存与履约异常队列；运营人员选择Listing异常并审批后，RPA才填写本地Seller Central仿真后台、保存草稿、刷新回读字段，并生成截图、Trace、报告和飞书兼容通知。
 
-默认演示不需要卖家账号和外部 API。项目同时集成开源 `python-amazon-sp-api` SDK，卖家授权后可以通过只读端点拉取 FBA 库存和非 PII 订单状态预览。
+## 已验证结果
 
-## 运行效果
+| 项目 | 结果 |
+| --- | ---: |
+| 商品 | 100 |
+| 订单 | 800 |
+| 30天库存快照 | 3000 |
+| 标注异常 | 24，Listing、库存、订单各8条 |
+| 固定合成标注集 | Precision 1.0、Recall 1.0、F1 1.0 |
+| 自动化测试 | 32 passed |
+| HTTP限流恢复 | 前2次429，第3次同步100条库存记录 |
+| Chromium闭环 | 首次受控失败，第2次恢复并保存草稿 |
+| 飞书通知 | RPA成功后自动发送；支持真实Webhook与Fixture切换 |
 
-| 作品集控制台 | Playwright 保存的 Listing 草稿 |
-|---|---|
-| ![AmazonOps AI 控制台](docs/images/dashboard.png) | ![RPA Listing 草稿](docs/images/rpa-listing-draft.png) |
+评测指标来自固定合成数据，用于证明规则、队列和评测链路可复现，不代表真实店铺准确率。
 
-## 这个项目证明什么
+## 界面与执行证据
 
-| 能力 | 可演示证据 |
-|---|---|
-| RPA 自动化 | Playwright 自动填入 SKU、标题和五点描述，等待保存结果并生成截图 |
-| Amazon 运营理解 | Listing 完整度评分、FBA 低库存阈值、超时订单识别、草稿审核流程 |
-| 可靠任务编排 | 幂等键、步骤状态、错误记录、失败重试与已完成步骤复用 |
-| AI 工程 | 确定性分析器保底；OpenAI-compatible 结构化输出和 Pydantic 强校验 |
-| 真实接口准备 | `python-amazon-sp-api` 2.1.22 只读适配器、凭证就绪检查、官方字段契约测试 |
-| 工程交付 | FastAPI/OpenAPI、SQLite、JSON/Markdown 报告、自动化测试和三分钟演示脚本 |
+![任务监控看板](docs/images/dashboard.png)
+
+![RPA保存Listing草稿](docs/images/rpa-listing-draft.png)
 
 ## 业务闭环
 
-```mermaid
-flowchart LR
-    A[样例数据或 Amazon SP-API] --> B[Pydantic 数据校验]
-    B --> C[Listing/库存/订单巡检]
-    C --> D[规则或 AI 结构化建议]
-    D --> E[Playwright 填写 Listing 草稿]
-    E --> F[SQLite 审计记录]
-    E --> G[截图 + JSON/Markdown 报告]
-    F --> H[失败重试与步骤复用]
-```
+    多平台与ERP数据同步
+        → 数据字段校验与异常检测
+        → SQLite异常队列
+        → 平台规则引擎判定异常
+        → RAG检索SOP并解释，AI生成修改建议
+        → 人工选择SKU并审批
+    → 后端事件触发影刀填写Listing草稿
+        → 页面刷新与字段回读
+        → 截图、Trace和审计报告
+        → 飞书兼容通知与指标看板
+        → 失败重试或人工处理
 
-## 快速开始（Windows PowerShell）
+RPA只保存本地仿真草稿，不发布商品、不调价、不发货、不退款。
+
+## 主要实现
+
+- FastAPI和SQLite记录任务、审批、步骤、重试和审计证据。
+- Amazon、Shopee、TikTok Shop、ERP和物流共用商品、库存、订单同步契约。
+- Shopee、TikTok Shop、ERP和物流可通过环境变量切换外部HTTPS端点；未配置时自动使用本地Fixture。
+- Amazon、Shopee、TikTok Shop的Listing完整度和订单时效采用可测试的确定性规则；RAG不直接判罚，只返回SOP引用和处理解释。
+- Bearer令牌按`data:read`与`notify:write`区分权限，幂等键标识同步批次。
+- 429和5xx最多重试3次，Pydantic在数据进入业务流程前校验字段。
+- 影刀由审批事件通过本机CLI异步启动，保存后刷新页面并逐项回读字段；Playwright保留为回归测试执行器。
+- 看板每5秒刷新任务成功率、失败数、恢复数和平均处理时长。
+- Amazon SP-API保留只读适配器；无卖家凭证时不会创建Amazon网络客户端。
+
+## 快速开始
+
+Windows PowerShell：
 
 ```powershell
 cd E:\projects\amazon-ops-ai
@@ -42,59 +62,34 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m playwright install chromium
 .\.venv\Scripts\python.exe -m pytest -q
+$env:AMAZONOPS_BASE_URL='http://127.0.0.1:8000'
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-打开 `http://127.0.0.1:8000/`。也可以在另一个终端运行：
+打开`http://127.0.0.1:8000/`。默认使用确定性分析器，不产生模型费用。启用OpenAI兼容分析时，按`.env.example`配置变量。
 
-> 如果改用其他端口，请同时设置 AMAZONOPS_BASE_URL，例如 http://127.0.0.1:8010，让 RPA 访问同一个本地服务。
+## 关键API
 
-```powershell
-.\.venv\Scripts\python.exe scripts/demo.py
-```
+- `GET /api/integrations/contracts`：来源、资源、权限和重试规范。
+- `POST /api/integrations/sync`：多平台或第三方系统数据同步演练。
+- `POST /api/demo/run`：创建巡检任务和24条异常队列。
+- `POST /api/tasks/{id}/approve`：选择Listing异常并审批执行。
+- `POST /api/tasks/{id}/retry`：恢复已审批失败任务。
+- `POST /api/tasks/{id}/notify`：手动补发飞书通知；RPA成功回传时会自动发送。
+- `GET /api/metrics`：查询成功率、失败数、恢复数和平均处理时长。
+- `GET /api/integrations/amazon/status`：查看SP-API SDK与凭证就绪状态。
 
-Demo 会完成一次正常任务，再制造一次浏览器步骤失败并重试。执行证据保存在 `artifacts/<task-id>/`，任务和步骤状态保存在 `data/amazon_ops.db`。
+## 外部接口边界
 
-## Amazon SP-API 开源集成
+Amazon保留真实SP-API只读适配器，但当前没有卖家授权，未执行生产调用。Shopee、TikTok Shop、ERP、物流和飞书已实现外部端点配置与本地Fixture回退；因无生产账号，当前验证范围是HTTP契约、认证头、重试、字段校验和Webhook消息。影刀已完成本机事件触发、任务领取、页面填写、字段回读和结果回传实测。
 
-项目使用 [`saleweaver/python-amazon-sp-api`](https://github.com/saleweaver/python-amazon-sp-api) 作为运行时 SDK，并参考 Amazon 官方 [`selling-partner-api-models`](https://github.com/amzn/selling-partner-api-models) 与 [`selling-partner-api-samples`](https://github.com/amzn/selling-partner-api-samples) 设计字段映射和契约测试。
+详细规范见`docs/API_INTEGRATION_GUIDE.md`、`docs/SHADOWBOT_RUNBOOK.md`和`docs/JD_ALIGNMENT_PLAN.md`。
 
-未授权时，`GET /api/integrations/amazon/status` 只返回 SDK 版本、站点和缺失的变量名，不发 Amazon 网络请求。授权后在 `.env.local` 设置：
+## 开源参考
 
-```ini
-SP_API_REFRESH_TOKEN=
-LWA_APP_ID=
-LWA_CLIENT_SECRET=
-SP_API_MARKETPLACE=US
-```
+- Amazon官方Samples：https://github.com/amzn/selling-partner-api-samples
+- Amazon官方API Models：https://github.com/amzn/selling-partner-api-models
+- Playwright Python：https://github.com/microsoft/playwright-python
+- 飞书OpenAPI Python SDK：https://github.com/larksuite/oapi-sdk-python
 
-然后调用 `POST /api/integrations/amazon/preview`。该端点只读取 FBA 库存与订单状态，不请求买家姓名、地址、电话等 PII，也不执行发布、调价、发货或退款。
-
-## 可选 AI 分析
-
-默认 `AMAZONOPS_ANALYZER=deterministic`，演示稳定且零模型成本。若要启用 OpenAI-compatible 结构化分析，在 `.env.local` 配置：
-
-```ini
-AMAZONOPS_ANALYZER=openai
-OPENAI_API_KEY=
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-5.6-luna
-OPENAI_API_MODE=responses
-```
-
-每个 SKU 必须返回且只能返回一条建议，标题和五点描述均经过 Pydantic 校验。模型接口失败时任务会记录可读错误，重试不会重复已经完成的数据校验步骤。
-
-## API
-
-- `GET /health`：应用、AI Provider 与 SP-API 就绪状态。
-- `GET /api/catalog`：演示商品、库存、订单和风险摘要。
-- `GET /api/integrations/amazon/status`：SP-API SDK 与凭证准备情况。
-- `POST /api/integrations/amazon/preview`：授权后的只读 Amazon 数据预览。
-- `POST /api/demo/run`：运行正常或受控失败的端到端任务。
-- `GET /api/tasks`、`GET /api/tasks/{id}`：任务与步骤审计。
-- `POST /api/tasks/{id}/retry`：恢复失败任务。
-- `GET /api/tasks/{id}/report`：结构化运营报告。
-
-## 项目边界
-
-已验证的是本地业务闭环、开源 SDK 装载、Amazon 响应映射、无凭证保护和自动化测试。尚未连接真实卖家账号，因此不宣称完成 Amazon 生产环境联调。第三方组件及许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+第三方许可证见`THIRD_PARTY_NOTICES.md`。
