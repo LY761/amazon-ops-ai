@@ -1,0 +1,234 @@
+{
+  "retrieval_cases": [
+    {
+      "query": "Amazon标题缺少品牌和规格怎么处理",
+      "platform": "amazon",
+      "expected_document": "amazon_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "五点描述不完整可以直接发布吗",
+      "platform": "amazon",
+      "expected_document": "amazon_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "主图和商品描述不一致怎么办",
+      "platform": "amazon",
+      "expected_document": "amazon_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "出现绝对化承诺应该进入什么流程",
+      "platform": "amazon",
+      "expected_document": "amazon_listing",
+      "expected_heading": "违规风险与处理"
+    },
+    {
+      "query": "敏感词命中后RPA可以提交Listing吗",
+      "platform": "amazon",
+      "expected_document": "amazon_listing",
+      "expected_heading": "违规风险与处理"
+    },
+    {
+      "query": "生成式文案发布前需要谁确认",
+      "platform": "amazon",
+      "expected_document": "amazon_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "Amazon变体关系什么时候复核",
+      "platform": "amazon",
+      "expected_document": "amazon_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "Listing草稿阶段要检查哪些项目",
+      "platform": "amazon",
+      "expected_document": "amazon_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "Shopee标题缺少核心属性怎么处理",
+      "platform": "shopee",
+      "expected_document": "shopee_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "Shopee素材与文本不一致能发布吗",
+      "platform": "shopee",
+      "expected_document": "shopee_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "Shopee AI文案可以绕过审批吗",
+      "platform": "shopee",
+      "expected_document": "shopee_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "Shopee违规词应该如何处理",
+      "platform": "shopee",
+      "expected_document": "shopee_listing",
+      "expected_heading": "风险与审批"
+    },
+    {
+      "query": "TikTok Shop标题和属性不一致怎么办",
+      "platform": "tiktok_shop",
+      "expected_document": "tiktok_shop_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "TikTok Shop生成文案什么时候能发布",
+      "platform": "tiktok_shop",
+      "expected_document": "tiktok_shop_listing",
+      "expected_heading": "发布前完整度检查"
+    },
+    {
+      "query": "TikTok Shop出现夸大承诺如何处理",
+      "platform": "tiktok_shop",
+      "expected_document": "tiktok_shop_listing",
+      "expected_heading": "风险与审批"
+    },
+    {
+      "query": "TikTok Shop RPA能否自动调价",
+      "platform": "tiktok_shop",
+      "expected_document": "tiktok_shop_listing",
+      "expected_heading": "风险与审批"
+    },
+    {
+      "query": "可售库存低于安全库存要做什么",
+      "platform": "amazon",
+      "expected_document": "operations_governance",
+      "expected_heading": "库存与补货"
+    },
+    {
+      "query": "库存覆盖天数小于14天如何补货",
+      "platform": "amazon",
+      "expected_document": "operations_governance",
+      "expected_heading": "库存与补货"
+    },
+    {
+      "query": "补货建议需要记录哪些字段",
+      "platform": "shopee",
+      "expected_document": "operations_governance",
+      "expected_heading": "库存与补货"
+    },
+    {
+      "query": "库存数量异常先核对什么",
+      "platform": "tiktok_shop",
+      "expected_document": "operations_governance",
+      "expected_heading": "库存与补货"
+    },
+    {
+      "query": "没有入库记录可以直接创建发货单吗",
+      "platform": "amazon",
+      "expected_document": "operations_governance",
+      "expected_heading": "库存与补货"
+    },
+    {
+      "query": "订单超过承诺发货时间未出库怎么办",
+      "platform": "shopee",
+      "expected_document": "operations_governance",
+      "expected_heading": "订单与售后"
+    },
+    {
+      "query": "影响超过10个订单时如何升级",
+      "platform": "amazon",
+      "expected_document": "operations_governance",
+      "expected_heading": "订单与售后"
+    },
+    {
+      "query": "退款金额可以让机器人自动处理吗",
+      "platform": "tiktok_shop",
+      "expected_document": "operations_governance",
+      "expected_heading": "订单与售后"
+    },
+    {
+      "query": "买家投诉和高价值订单谁审核",
+      "platform": "amazon",
+      "expected_document": "operations_governance",
+      "expected_heading": "订单与售后"
+    },
+    {
+      "query": "RPA允许自动完成哪些低风险动作",
+      "platform": "shopee",
+      "expected_document": "operations_governance",
+      "expected_heading": "自动化执行边界"
+    },
+    {
+      "query": "自动调价是否必须人工批准",
+      "platform": "amazon",
+      "expected_document": "operations_governance",
+      "expected_heading": "自动化执行边界"
+    },
+    {
+      "query": "补货下单能不能跳过人工审批",
+      "platform": "tiktok_shop",
+      "expected_document": "operations_governance",
+      "expected_heading": "自动化执行边界"
+    },
+    {
+      "query": "自动化执行需要保存什么审计证据",
+      "platform": "amazon",
+      "expected_document": "operations_governance",
+      "expected_heading": "自动化执行边界"
+    },
+    {
+      "query": "发送买家消息需要什么权限边界",
+      "platform": "shopee",
+      "expected_document": "operations_governance",
+      "expected_heading": "自动化执行边界"
+    }
+  ],
+  "no_evidence_cases": [
+    {
+      "query": "zxqv-9917完全无关词",
+      "platform": "amazon"
+    },
+    {
+      "query": "如何申请月球采矿许可证",
+      "platform": "shopee"
+    },
+    {
+      "query": "量子芯片退火温度是多少",
+      "platform": "tiktok_shop"
+    },
+    {
+      "query": "员工今天请假怎么审批",
+      "platform": "amazon"
+    },
+    {
+      "query": "感冒发烧应该怎么处理",
+      "platform": "shopee"
+    },
+    {
+      "query": "网站标题SEO怎么修改",
+      "platform": "amazon"
+    },
+    {
+      "query": "短视频发布后播放量太低",
+      "platform": "tiktok_shop"
+    },
+    {
+      "query": "餐厅订单催菜应该找谁",
+      "platform": "amazon"
+    },
+    {
+      "query": "商品如何参加秒杀活动",
+      "platform": "amazon"
+    },
+    {
+      "query": "Amazon广告关键词怎么竞价",
+      "platform": "amazon"
+    },
+    {
+      "query": "Shopee发票税率如何设置",
+      "platform": "shopee"
+    },
+    {
+      "query": "TikTok Shop直播佣金怎么计算",
+      "platform": "tiktok_shop"
+    }
+  ]
+}

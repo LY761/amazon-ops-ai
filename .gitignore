@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 artifacts/
 data/*.db
+data/qdrant/
 *.log
 .env
 .env.*

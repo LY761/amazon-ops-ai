@@ -70,6 +70,14 @@ AmazonOps AI 是一个 Amazon 运营智能巡检与 RPA 草稿助手。系统读
 - 用户可以运行正常 Demo、失败恢复 Demo，查看报告与截图。
 - 提供 README 中列出的稳定 API 路径和可读 HTTP 错误。
 
+### FR-08 平台规则RAG
+
+- 规则文档按Markdown标题、章节和完整条款切分，保留平台、主题、版本及章节元数据。
+- 使用Qdrant本地持久化向量库与`BAAI/bge-small-zh-v1.5`生成中文向量。
+- BM25和向量双路召回，经RRF融合及多语言Cross-Encoder重排后选择Top-K证据。
+- 模型只基于证据生成结构化建议；引用ID必须来自Top-K，动作必须属于白名单。
+- 无有效证据时拒答并转人工；知识检索或模型接口失败时不得越过审批执行。
+
 ## 5. 非功能需求
 
 - 模块按 domain、services、adapters、infrastructure 分层。
@@ -87,6 +95,7 @@ AmazonOps AI 是一个 Amazon 运营智能巡检与 RPA 草稿助手。系统读
 6. 契约测试能把官方字段形态映射为低库存与订单关注项，不包含 PII。
 7. 固定合成标注集输出Precision、Recall和F1，指标与真实店铺效果分开表述。
 8. PROJECT_STATUS.md分开记录已验证与未验证范围。
+9. 30条固定RAG评测集按目标Chunk输出Recall@1、Recall@3、MRR和目标引用命中率，困难域外集输出拒答率。
 
 ## 7. 不在当前范围
 

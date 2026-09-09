@@ -6,3 +6,5 @@ httpx>=0.27,<1
 openai>=1.109,<3
 python-amazon-sp-api==2.1.22
 pytest>=8,<9
+qdrant-client[fastembed]>=1.15,<2
+flashrank>=0.2,<1

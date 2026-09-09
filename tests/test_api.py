@@ -76,13 +76,24 @@ class StubIntegrations:
         return {"delivery": {"code": 0}, "payload": {}, "attempts": 1, "mode": "fixture_demo"}
 
 
+class StubRuleRAG:
+    def status(self):
+        return {"vector_store": "qdrant_local_persistent", "embedding_model": "test", "reranker": "test", "documents": 4, "chunks": 9, "chunk_strategy": "test", "retrieval": "test", "generation_configured": "test", "last_generation": None, "initialized": True}
+    def search(self, query, platform, top_k=5):
+        return [{"id": "test:1", "document_id": f"{platform}_listing", "title": f"{platform} Listing运营规则SOP", "excerpt": "测试规则证据", "sparse_rank": 1, "dense_rank": 1, "rrf_score": 0.032787, "rerank_score": 0.99}][:top_k]
+    def answer(self, query, platform="amazon", top_k=3):
+        return {"answer": "应先生成草稿并人工审核。", "citations": [{"source": f"{platform}_listing", "title": f"{platform} Listing运营规则SOP", "excerpt": "规则命中后只保存草稿。"}], "confidence": 0.86, "requires_human_review": True, "recommended_action": "save_listing_draft", "source": "local_qdrant_rag"}
+    def close(self):
+        pass
+
+
 def make_client(tmp_path, knowledge=None, analyzer=None, rpa=None, shadowbot_launcher=None, integrations=None):
     integrations = integrations or StubIntegrations()
     app = create_app(
         database=tmp_path / "db.sqlite",
         artifacts=tmp_path / "artifacts",
         analyzer=analyzer or DeterministicAnalyzer(),
-        knowledge=knowledge,
+        knowledge=knowledge or KnowledgeAdvisor(rag_url="", local_rag=StubRuleRAG()),
         integrations=integrations,
         shadowbot_launcher=shadowbot_launcher or (lambda: {"mode": "test"}),
     )
@@ -102,7 +113,7 @@ def test_inspection_creates_recommendation_and_blocks_rpa_until_approval(tmp_pat
     assert {step["name"] for step in first["steps"]} == {"data_validation", "operations_analysis", "knowledge_recommendation", "human_review"}
     recommendation = first["report"]["recommendation"]
     assert set(recommendation) == {"answer", "citations", "confidence", "requires_human_review", "recommended_action", "source"}
-    assert len(recommendation["citations"]) == 2 and recommendation["requires_human_review"] is True
+    assert recommendation["citations"] and recommendation["requires_human_review"] is True
     assert first["report"]["business_summary"]["external_side_effect"] == "blocked_until_approval"
     assert client.get(f"/api/tasks/{first['id']}/report").status_code == 409
 
@@ -156,19 +167,28 @@ def test_approval_is_single_use_and_needs_pending_state(tmp_path):
 
 
 def test_optional_external_rag_falls_back_to_local_without_network(tmp_path):
-    client = make_client(tmp_path, KnowledgeAdvisor(rag_url=""))
+    client = make_client(tmp_path, KnowledgeAdvisor(rag_url="http://127.0.0.1:1", timeout=0.01, local_rag=StubRuleRAG()))
     task = client.post("/api/demo/run", json={"idempotency_key": "local-rag"}).json()
-    assert task["report"]["recommendation"]["source"] == "local_knowledge"
+    assert task["report"]["recommendation"]["source"] == "local_qdrant_rag"
 
 
 def test_catalog_health_and_rpa_loopback_guard(tmp_path):
     client = make_client(tmp_path)
-    assert client.get("/health").json()["mode"] == "mock"
+    health = client.get("/health").json()
+    assert health["mode"] == "mock" and health["rag"]["vector_store"] == "qdrant_local_persistent"
     assert client.get("/api/catalog").json()["summary"]["product_count"] == 100
     home = client.get("/")
     assert home.status_code == 200 and 'executor:"shadowbot"' in home.text
     with pytest.raises(ValueError, match="loopback"):
         LocalSellerCentralRPA("https://sellercentral.amazon.com", tmp_path)
+
+
+def test_rag_status_and_search_expose_retrieval_trace(tmp_path):
+    client = make_client(tmp_path)
+    status = client.get("/api/rag/status").json()
+    result = client.post("/api/rag/search", json={"query": "标题缺少规格怎么办", "platform": "amazon", "top_k": 3}).json()
+    assert status["vector_store"] == "qdrant_local_persistent"
+    assert result["hits"][0]["sparse_rank"] == 1 and result["hits"][0]["rerank_score"] == 0.99
 
 
 def test_api_tests_stay_deterministic_when_environment_selects_openai(tmp_path, monkeypatch):

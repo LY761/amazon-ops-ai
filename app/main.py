@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+from contextlib import asynccontextmanager
 from typing import Callable, Literal
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
@@ -33,9 +34,19 @@ class SyncRequest(BaseModel):
     resource: str
     idempotency_key: str = Field(min_length=3, max_length=100)
     failures_before_success: int = Field(default=0, ge=0, le=2)
+class RAGSearchRequest(BaseModel):
+    query: str = Field(min_length=2, max_length=500)
+    platform: Literal["amazon", "shopee", "tiktok_shop"] = "amazon"
+    top_k: int = Field(default=5, ge=1, le=10)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    knowledge = getattr(getattr(app.state, "workflow", None), "knowledge", None)
+    if hasattr(knowledge, "close"):
+        knowledge.close()
 def create_app(database: Path = DB_PATH, artifacts: Path = ARTIFACTS, base_url: str | None = None, analyzer: Analyzer | None = None, amazon: AmazonSPAPIAdapter | None = None, knowledge: KnowledgeAdvisor | None = None, integrations: LocalIntegrationGateway | None = None, shadowbot_launcher: Callable[[], dict] | None = None) -> FastAPI:
     load_local_env(ROOT / ".env.local")
-    app = FastAPI(title="AmazonOps AI", version="0.3.0", description="Approval-gated Amazon operations inspection and RPA draft assistant")
+    app = FastAPI(title="AmazonOps AI", version="0.4.0", description="Approval-gated Amazon operations inspection, grounded RAG and RPA draft assistant", lifespan=lifespan)
     templates = Jinja2Templates(directory=str(ROOT / "app" / "templates"))
     repo = Repository(database); runtime_base_url = base_url or os.getenv("AMAZONOPS_BASE_URL", "http://127.0.0.1:8000")
     analyzer = analyzer or create_analyzer(); amazon = amazon or AmazonSPAPIAdapter()
@@ -46,15 +57,24 @@ def create_app(database: Path = DB_PATH, artifacts: Path = ARTIFACTS, base_url: 
     app.state.workflow = Workflow(repo, analyzer, LocalSellerCentralRPA(runtime_base_url, artifacts), artifacts, knowledge); app.state.repo = repo; app.state.amazon = amazon; app.state.integrations = integrations; app.state.integration_key = integration_key; app.state.mock_attempts = {}; app.state.shadowbot_launcher = shadowbot_launcher or shadowbot.launch
     artifacts.mkdir(parents=True, exist_ok=True); app.mount("/artifacts", StaticFiles(directory=str(artifacts)), name="artifacts")
     @app.get("/health")
-    def health() -> dict: return {"status":"ok","mode":analyzer.mode,"provider":analyzer.provider,"external_credentials_required":analyzer.mode=="openai","amazon_integration":amazon.status()}
+    def health() -> dict: return {"status":"ok","mode":analyzer.mode,"provider":analyzer.provider,"external_credentials_required":analyzer.mode=="openai","amazon_integration":amazon.status(),"rag":app.state.workflow.knowledge.status()}
     @app.get("/", response_class=HTMLResponse)
-    def home(request: Request): return templates.TemplateResponse(request, "index.html", {"catalog":summary(),"tasks":repo.list_tasks()[:10],"metrics":repo.metrics(),"mode":analyzer.mode,"amazon":amazon.status(),"integrations":integrations.status()})
+    def home(request: Request): return templates.TemplateResponse(request, "index.html", {"catalog":summary(),"tasks":repo.list_tasks()[:10],"metrics":repo.metrics(),"mode":analyzer.mode,"amazon":amazon.status(),"integrations":integrations.status(),"rag":app.state.workflow.knowledge.status()})
     @app.get("/simulator", response_class=HTMLResponse)
     def simulator(request: Request): return templates.TemplateResponse(request, "simulator.html", {})
     @app.get("/api/catalog")
     def catalog() -> dict: return summary()
     @app.get("/api/metrics")
     def metrics() -> dict: return repo.metrics()
+    @app.get("/api/rag/status")
+    def rag_status() -> dict: return app.state.workflow.knowledge.status()
+    @app.post("/api/rag/search")
+    def rag_search(payload: RAGSearchRequest) -> dict:
+        try:
+            hits = app.state.workflow.knowledge.search(payload.query, payload.platform, payload.top_k)
+            return {"query": payload.query, "platform": payload.platform, "hits": hits, "pipeline": app.state.workflow.knowledge.status()}
+        except Exception:
+            raise HTTPException(503, "Local RAG is temporarily unavailable")
     @app.get("/api/integrations/contracts")
     def integration_contracts() -> dict:
         return {"mode":"external_or_fixture","sources":sorted(SOURCES),"resources":sorted(RESOURCE_MODELS),"auth":"environment-scoped token","scopes":["data:read","notify:write"],"retry_statuses":[429,"5xx"],"max_attempts":3}
